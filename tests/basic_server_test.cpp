@@ -2,12 +2,21 @@
 #include "as2_behavior/behavior_server.hpp"
 
 #include <rclcpp/rclcpp.hpp>
-#include "as2_msgs/action/follow_path.hpp"
+// #include "as2_msgs/action/follow_path.hpp"
+#include "as2_msgs/action/take_off.hpp"
 
-int main(int argc, char **argv) {
+class TakeOffServer : public as2_behavior::BehaviorServer<as2_msgs::action::TakeOff> {
+public:
+  TakeOffServer(const std::string& name)
+      : as2_behavior::BehaviorServer<as2_msgs::action::TakeOff>(name) {
+    std::cout << "TakeOffServer constructor" << std::endl;
+  }
+};
+
+int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   std::cout << "Hello World!" << std::endl;
-  auto node = std::make_shared<as2_behavior::BehaviorServer<as2_msgs::action::FollowPath>>();
+  auto node = std::make_shared<TakeOffServer>("TakeOffBehaviour");
   rclcpp::spin(node);
 
   return 0;
