@@ -32,14 +32,15 @@ private:
 
   rclcpp::Publisher<as2_behavior::msg::BehaviorStatus>::SharedPtr behavior_status_pub_;
   rclcpp::TimerBase::SharedPtr behavior_status_timer_;
+  rclcpp::TimerBase::SharedPtr run_timer_;
 
 private:
   std::string generate_name(const std::string& name) {
     return std::string(this->get_name()) + "_behavior/" + name;
   }
 
-public:
-  BehaviorServer(const std::string& name) : Node(name) {
+private:
+  void register_service_servers() {
     start_srv_ = this->create_service<start_srv>(
         generate_name("activate"),
         std::bind(&BehaviorServer::activate, this, std::placeholders::_1, std::placeholders::_2));
@@ -55,13 +56,31 @@ public:
     resume_srv_ = this->create_service<std_srvs::srv::Trigger>(
         generate_name("resume"),
         std::bind(&BehaviorServer::resume, this, std::placeholders::_1, std::placeholders::_2));
+  }
+
+  void register_publishers() {
     feedback_pub_    = this->create_publisher<feedback_msg>(generate_name("feedback"), 10);
     goal_status_pub_ = this->create_publisher<goal_status_msg>(generate_name("goal_status"), 10);
-
     behavior_status_pub_ = this->create_publisher<as2_behavior::msg::BehaviorStatus>(
         generate_name("behavior_status"), 10);
+  }
+  void register_timers() {
     behavior_status_timer_ = this->create_wall_timer(
         std::chrono::milliseconds(100), std::bind(&BehaviorServer::publish_behavior_status, this));
+  }
+
+  template <typename T = long, typename ratio_ = std::ratio<1, 1000>>
+  void register_run_timer(
+      std::chrono::duration<T, ratio_> period = std::chrono::milliseconds(100)) {
+    run_timer_ = this->create_wall_timer(period, std::bind(&BehaviorServer::run, this));
+  }
+  void cleanup_run_timer() { run_timer_.reset(); }
+
+public:
+  BehaviorServer(const std::string& name) : Node(name) {
+    register_service_servers();
+    register_publishers();
+    register_timers();
   }
 
   // TODO: CONVERT INTO PURE VIRTUAL FUNCTIONS
@@ -85,12 +104,16 @@ public:
                          std_srvs::srv::Trigger::Response::SharedPtr result) {
     return true;
   }
-  virtual ExecutionState on_run() { return ExecutionState::SUCCESS; }
+
+  virtual ExecutionState on_run(typename feedback_msg::SharedPtr& fb) {
+    return ExecutionState::SUCCESS;
+  }
 
   void activate(const typename start_srv::Request::SharedPtr goal,
                 typename start_srv::Response::SharedPtr result) {
     RCLCPP_INFO(this->get_logger(), "start");
     if (on_activate(goal, result)) {
+      register_run_timer();
       behavior_status_.status = BehaviorStatus::RUNNING;
     }
   };
@@ -98,6 +121,7 @@ public:
                   typename std_srvs::srv::Trigger::Response::SharedPtr result) {
     RCLCPP_INFO(this->get_logger(), "stop");
     on_deactivate(goal, result);
+    cleanup_run_timer();
   };
   void modify(const typename modify_srv::Request::SharedPtr goal,
               typename modify_srv::Response::SharedPtr result) {
@@ -119,7 +143,10 @@ public:
     if (behavior_status_.status != BehaviorStatus::RUNNING) {
       return;
     };
-    ExecutionState state = on_run();
+    auto fb              = std::make_shared<feedback_msg>();
+    ExecutionState state = on_run(fb);
+    // feedback_pub_->publish(fb);
+
     switch (state) {
       case ExecutionState::SUCCESS:
         RCLCPP_INFO(this->get_logger(), "SUCCESS");
@@ -137,6 +164,11 @@ public:
         RCLCPP_INFO(this->get_logger(), "ABORTED");
         behavior_status_.status = BehaviorStatus::IDLE;
         break;
+    }
+
+    if (behavior_status_.status != BehaviorStatus::RUNNING) {
+      // TODO: CHECK IF THIS IS NEEDED
+      cleanup_run_timer();
     }
   }
 
