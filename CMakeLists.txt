@@ -54,6 +54,8 @@ if(BUILD_TESTING)
 endif()
 
 
+include(tests/test.cmake)
+
 install(
   DIRECTORY include/
   DESTINATION include
