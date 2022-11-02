@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-set(PROJECT_NAME as2_node_template)
+set(PROJECT_NAME as2_behavior)
 project(${PROJECT_NAME})
 
 # Default to C++14
@@ -11,6 +11,9 @@ endif()
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
+
+# uncommnet if it is necessary set -f PIC
+# set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # find dependencies
 set(PROJECT_DEPENDENCIES
@@ -29,16 +32,17 @@ endforeach()
 include_directories(
   include
   include/${PROJECT_NAME}
-  #uncomment if using Eigen3
-  #{EIGEN3_INCLUDE_DIRS} 
 )
 
 set(SOURCE_CPP_FILES 
-  src/as2_node_template.cpp
+  src/behavior_server.cpp
 )
 
-add_executable(${PROJECT_NAME}_node src/as2_node_template_node.cpp ${SOURCE_CPP_FILES})
-ament_target_dependencies(${PROJECT_NAME}_node ${PROJECT_DEPENDENCIES})
+add_library(${PROJECT_NAME} SHARED ${SOURCE_CPP_FILES})
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(${PROJECT_NAME} ${PROJECT_DEPENDENCIES})
 
 
 if(BUILD_TESTING)
@@ -49,12 +53,30 @@ if(BUILD_TESTING)
   ament_clang_format(src/ include/ tests/ --config ${CMAKE_CURRENT_SOURCE_DIR}/.clang-format)
 endif()
 
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME})
 
-install(TARGETS
-  ${PROJECT_NAME}_node
-  DESTINATION lib/${PROJECT_NAME})
-    
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+ament_export_libraries(
+  ${PROJECT_NAME}
+)
+ament_export_targets(
+  export_${PROJECT_NAME}
+)
+
+ament_export_include_directories(
+  include
+)
+
+
 ament_package()
