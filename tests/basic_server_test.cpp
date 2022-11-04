@@ -11,6 +11,9 @@ public:
       : as2_behavior::BehaviorServer<as2_msgs::action::TakeOff>(name) {
     std::cout << "TakeOffServer constructor" << std::endl;
   }
+  as2_behavior::ExecutionState on_run(typename feedback_msg::SharedPtr& fb) override {
+    return as2_behavior::ExecutionState::RUNNING;
+  }
 };
 
 int main(int argc, char** argv) {
