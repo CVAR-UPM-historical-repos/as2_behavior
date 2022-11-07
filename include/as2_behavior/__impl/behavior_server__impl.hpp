@@ -1,6 +1,6 @@
 #ifndef __AS2_BEHAVIOR_SERVER__IMPL_HPP__
 #define __AS2_BEHAVIOR_SERVER__IMPL_HPP__
-#include "__detail/behavior_server__class.hpp"
+#include "as2_behavior/__detail/behavior_server__class.hpp"
 
 namespace as2_behavior {
 

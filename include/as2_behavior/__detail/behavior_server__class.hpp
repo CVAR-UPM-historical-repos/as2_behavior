@@ -2,7 +2,7 @@
 #define __BEHAVIOR_SERVER__CLASS_HPP__
 
 #include <as2_core/node.hpp>
-#include <behaviour_utils.hpp>
+#include <as2_behavior/behaviour_utils.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/service.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
