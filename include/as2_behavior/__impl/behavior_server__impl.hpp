@@ -61,7 +61,7 @@ void BehaviorServer<actionT>::handleAccepted(const std::shared_ptr<GoalHandleAct
 
 template <typename actionT>
 std::string BehaviorServer<actionT>::generate_name(const std::string& name) {
-  return std::string(this->get_name()) + "_behavior/" + name;
+  return std::string(this->get_name()) + "/_behavior/" + name;
 }
 
 template <typename actionT>
@@ -94,7 +94,8 @@ void BehaviorServer<actionT>::register_run_timer() {
                                        std::bind(&BehaviorServer::timer_callback, this));
 }
 template <typename actionT>
-void BehaviorServer<actionT>::cleanup_run_timer() {
+void BehaviorServer<actionT>::cleanup_run_timer(const ExecutionStatus& state) {
+  on_excution_end(state);
   goal_handle_.reset();
   run_timer_.reset();
 }
@@ -123,21 +124,21 @@ bool BehaviorServer<actionT>::on_resume(const std::shared_ptr<std::string>& mess
 }
 
 /* template <typename actionT>
-ExecutionState BehaviorServer<actionT>::on_run(typename feedback_msg::SharedPtr& fb) {
-  return ExecutionState::SUCCESS;
+ExecutionStatus BehaviorServer<actionT>::on_run(typename feedback_msg::SharedPtr& fb) {
+  return ExecutionStatus::SUCCESS;
 } */
 
 template <typename actionT>
-ExecutionState BehaviorServer<actionT>::on_run(
+ExecutionStatus BehaviorServer<actionT>::on_run(
     const typename std::shared_ptr<const typename actionT::Goal>& goal,
     typename std::shared_ptr<typename actionT::Feedback>& feedback_msg,
     typename std::shared_ptr<typename actionT::Result>& result_msg) {
-  return ExecutionState::SUCCESS;
+  return ExecutionStatus::SUCCESS;
 }  // namespace as2_behavior
 
 template <typename actionT>
 bool BehaviorServer<actionT>::activate(std::shared_ptr<const typename actionT::Goal> goal) {
-  RCLCPP_INFO(this->get_logger(), "start");
+  RCLCPP_INFO(this->get_logger(), "START");
   if (on_activate(goal)) {
     register_run_timer();
     behavior_status_.status = BehaviorStatus::RUNNING;
@@ -149,23 +150,22 @@ template <typename actionT>
 void BehaviorServer<actionT>::deactivate(
     const typename std_srvs::srv::Trigger::Request::SharedPtr goal,
     typename std_srvs::srv::Trigger::Response::SharedPtr result) {
-  RCLCPP_INFO(this->get_logger(), "stop");
+  RCLCPP_INFO(this->get_logger(), "STOP");
   auto msg        = std::make_shared<std::string>();
   result->success = on_deactivate(msg);
   result->message = *msg;
-  cleanup_run_timer();
+  if (result->success) cleanup_run_timer(ExecutionStatus::ABORTED);
 };
 template <typename actionT>
 
 void BehaviorServer<actionT>::modify(std::shared_ptr<const typename actionT::Goal> goal) {
-  RCLCPP_INFO(this->get_logger(), "modify");
-
+  RCLCPP_INFO(this->get_logger(), "MODIFY");
   on_modify(goal);
 };
 template <typename actionT>
 void BehaviorServer<actionT>::pause(const typename std_srvs::srv::Trigger::Request::SharedPtr goal,
                                     typename std_srvs::srv::Trigger::Response::SharedPtr result) {
-  RCLCPP_INFO(this->get_logger(), "pause");
+  RCLCPP_INFO(this->get_logger(), "PAUSE");
   if (behavior_status_.status != BehaviorStatus::RUNNING) {
     result->success = false;
     result->message = "Behavior is not running";
@@ -181,7 +181,7 @@ void BehaviorServer<actionT>::pause(const typename std_srvs::srv::Trigger::Reque
 template <typename actionT>
 void BehaviorServer<actionT>::resume(const typename std_srvs::srv::Trigger::Request::SharedPtr goal,
                                      typename std_srvs::srv::Trigger::Response::SharedPtr result) {
-  RCLCPP_INFO(this->get_logger(), "resume");
+  RCLCPP_INFO(this->get_logger(), "RESUME");
   if (behavior_status_.status != BehaviorStatus::PAUSED) {
     result->success = false;
     result->message = "Behavior is not paused";
@@ -201,39 +201,37 @@ void BehaviorServer<actionT>::run(
   if (behavior_status_.status != BehaviorStatus::RUNNING) {
     return;
   };
-  auto goal            = goal_handle_action->get_goal();
-  auto feedback        = std::make_shared<typename actionT::Feedback>();
-  auto result          = std::make_shared<typename actionT::Result>();
-  ExecutionState state = on_run(goal, feedback, result);
+  auto goal              = goal_handle_action->get_goal();
+  auto feedback          = std::make_shared<typename actionT::Feedback>();
+  auto result            = std::make_shared<typename actionT::Result>();
+  ExecutionStatus status = on_run(goal, feedback, result);
 
-  switch (state) {
-    case ExecutionState::SUCCESS:
+  switch (status) {
+    case ExecutionStatus::SUCCESS: {
       RCLCPP_INFO(this->get_logger(), "SUCCESS");
       behavior_status_.status = BehaviorStatus::IDLE;
-      // goal_handle_->set_result(result);
       goal_handle_->succeed(result);
-
-      break;
-    case ExecutionState::RUNNING:
-      RCLCPP_INFO(this->get_logger(), "RUNNING");
+    } break;
+    case ExecutionStatus::RUNNING: {
+      auto clk = this->get_clock();
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *clk, 5000, "RUNNING");
       goal_handle_action->publish_feedback(feedback);
       behavior_status_.status = BehaviorStatus::RUNNING;
-      break;
-    case ExecutionState::FAILURE: {
+    } break;
+    case ExecutionStatus::FAILURE: {
       RCLCPP_INFO(this->get_logger(), "FAILURE");
       behavior_status_.status = BehaviorStatus::IDLE;
       goal_handle_->abort(result);
     } break;
-    case ExecutionState::ABORTED: {
+    case ExecutionStatus::ABORTED: {
       RCLCPP_INFO(this->get_logger(), "ABORTED");
-      goal_handle_->abort(result);
       behavior_status_.status = BehaviorStatus::IDLE;
+      goal_handle_->abort(result);
     } break;
   }
 
   if (behavior_status_.status != BehaviorStatus::RUNNING) {
-    // TODO: CHECK IF THIS IS NEEDED
-    cleanup_run_timer();
+    cleanup_run_timer(status);
   }
 }
 

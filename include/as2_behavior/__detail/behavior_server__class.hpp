@@ -31,6 +31,8 @@ public:
   std::shared_ptr<GoalHandleAction> goal_handle_;
 
   as2_msgs::msg::BehaviorStatus behavior_status_;
+
+  // TODO: remove all the unnecessary using statements
   using BehaviorStatus  = as2_msgs::msg::BehaviorStatus;
   using start_srv       = typename actionT::Impl::SendGoalService;
   using modify_srv      = start_srv;
@@ -64,7 +66,7 @@ private:
   void register_timers();
 
   void register_run_timer();
-  void cleanup_run_timer();
+  void cleanup_run_timer(const ExecutionStatus& status);
 
 public:
   BehaviorServer(const std::string& name);
@@ -76,9 +78,11 @@ public:
   virtual bool on_pause(const std::shared_ptr<std::string>& message);
   virtual bool on_resume(const std::shared_ptr<std::string>& message);
 
-  virtual ExecutionState on_run(const typename std::shared_ptr<const typename actionT::Goal>& goal,
-                                typename std::shared_ptr<typename actionT::Feedback>& feedback_msg,
-                                typename std::shared_ptr<typename actionT::Result>& result_msg);
+  virtual void on_excution_end(const ExecutionStatus& state){};
+
+  virtual ExecutionStatus on_run(const typename std::shared_ptr<const typename actionT::Goal>& goal,
+                                 typename std::shared_ptr<typename actionT::Feedback>& feedback_msg,
+                                 typename std::shared_ptr<typename actionT::Result>& result_msg);
 
   bool activate(std::shared_ptr<const typename actionT::Goal> goal);
   void modify(std::shared_ptr<const typename actionT::Goal> goal);
