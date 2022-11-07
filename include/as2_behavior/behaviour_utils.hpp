@@ -1,7 +1,7 @@
 #ifndef __AS2_BEHAVIOR_UTILS_HPP__
 #define __AS2_BEHAVIOR_UTILS_HPP__
 
-#include <as2_behavior/msg/behavior_status.hpp>
+#include <as2_msgs/msg/behavior_status.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <string>
@@ -9,7 +9,7 @@
 namespace as2_behavior {
 
 // enum class BehaviorStatus { IDLE, RUNNING, PAUSED };
-enum class ExecutionState { SUCCESS, RUNNING, FAILURE, ABORTED };
+enum class ExecutionStatus { SUCCESS, RUNNING, FAILURE, ABORTED };
 
 /* template <typename actionT>
 using start_srv = typename actionT::Impl::SendGoalService;

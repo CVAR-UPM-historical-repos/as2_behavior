@@ -11,6 +11,24 @@ public:
       : as2_behavior::BehaviorServer<as2_msgs::action::TakeOff>(name) {
     std::cout << "TakeOffServer constructor" << std::endl;
   }
+  int i = 0;
+  bool on_activate(std::shared_ptr<const typename as2_msgs::action::TakeOff::Goal> goal) override {
+    std::cout << "TakeOffServer activate" << std::endl;
+    i = 0;
+    return true;
+  }
+  as2_behavior::ExecutionStatus on_run(
+      const std::shared_ptr<const as2_msgs::action::TakeOff::Goal>& goal,
+      std::shared_ptr<as2_msgs::action::TakeOff::Feedback>& feedback_msg,
+      std::shared_ptr<as2_msgs::action::TakeOff::Result>& result_msg) override {
+    feedback_msg->actual_takeoff_height = i++;
+    if (i < 100) {
+      return as2_behavior::ExecutionStatus::RUNNING;
+    }
+
+    result_msg->takeoff_success = true;
+    return as2_behavior::ExecutionStatus::SUCCESS;
+  }
 };
 
 int main(int argc, char** argv) {

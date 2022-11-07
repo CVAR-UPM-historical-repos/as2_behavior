@@ -23,20 +23,11 @@ set(PROJECT_DEPENDENCIES
   as2_msgs
   std_srvs
   std_msgs
-  builtin_interfaces
-  rosidl_default_generators
 )
 
 foreach(DEPENDENCY ${PROJECT_DEPENDENCIES})
   find_package(${DEPENDENCY} REQUIRED)
 endforeach()
-
-set(MSGS_FILES 
-  msg/BehaviorStatus.msg)
-rosidl_generate_interfaces(${PROJECT_NAME}_msgs
-  ${MSGS_FILES}
-  DEPENDENCIES builtin_interfaces std_msgs
-)
 
 
 include_directories(
@@ -53,7 +44,6 @@ add_library(${PROJECT_NAME} SHARED ${SOURCE_CPP_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-rosidl_target_interfaces(${PROJECT_NAME} ${PROJECT_NAME}_msgs "rosidl_typesupport_cpp")
 ament_target_dependencies(${PROJECT_NAME} ${PROJECT_DEPENDENCIES})
 
 
