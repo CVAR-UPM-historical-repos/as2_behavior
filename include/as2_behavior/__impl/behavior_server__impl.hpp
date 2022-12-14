@@ -154,7 +154,10 @@ void BehaviorServer<actionT>::deactivate(
   auto msg        = std::make_shared<std::string>();
   result->success = on_deactivate(msg);
   result->message = *msg;
-  if (result->success) cleanup_run_timer(ExecutionStatus::ABORTED);
+  if (result->success) {
+    behavior_status_.status = BehaviorStatus::IDLE;
+    cleanup_run_timer(ExecutionStatus::ABORTED);
+    }
 };
 template <typename actionT>
 
